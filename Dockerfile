@@ -7,7 +7,7 @@ COPY patches/* /patches/
 
 RUN echo 'APT::Install-Recommends "false";' >> /etc/apt/apt.conf && \
     echo 'APT::Get::Install-Suggests "false";' >> /etc/apt/apt.conf && \
-    apt update; apt install -y ca-certificates wget python libpython2.7; \
+    apt update; apt install -y ca-certificates wget python libpython2.7 nfs-common; \
     update-ca-certificates; \
     wget --no-check-certificate https://bootstrap.pypa.io/get-pip.py; \
     python get-pip.py; \
@@ -29,7 +29,7 @@ RUN apt update; apt install -y $BUILD_PACKAGES && \
     if [ -z $REPO ]; then \
       echo "Sources fetching from releases $RELEASE_URL"; \
       wget $RELEASE_URL && tar xvfz $SVC_VERSION.tar.gz -C / && mv $(ls -1d $SVC_NAME*) $SVC_NAME && \
-      cd /$SVC_NAME && pip install -r requirements.txt -c /app/upper-constraints.txt && PBR_VERSION=$SVC_VERSION python setup.py install; \
+      cd /$SVC_NAME && pip install -r requirements.txt -c /app/upper-constraints.txt && /patches/patch.sh && PBR_VERSION=$SVC_VERSION python setup.py install; \
     else \
       if [ -n $COMMIT ]; then \
         cd /; git clone $REPO --single-branch --branch $BRANCH; \
@@ -37,7 +37,7 @@ RUN apt update; apt install -y $BUILD_PACKAGES && \
       else \
         git clone $REPO --single-branch --depth=1 --branch $BRANCH; \
       fi; \
-      cd /$SVC_NAME; pip install -r requirements.txt -c /app/upper-constraints.txt && python setup.py install && \
+      cd /$SVC_NAME; pip install -r requirements.txt -c /app/upper-constraints.txt && /patches/patch.sh && python setup.py install && \
       rm -rf /$SVC_NAME/.git; \
     fi; \
     pip install supervisor PyMySQL python-memcached && \
@@ -52,7 +52,7 @@ RUN mkdir -p /var/lib/$SVC_NAME/images /etc/SVC_NAME /etc/supervisord /var/log/s
 COPY configs/supervisord/supervisord.conf /etc
 
 # copy configs
-COPY configs/$SVC_NAME/* /etc/glance/
+COPY configs/$SVC_NAME/* /etc/$SVC_NAME/
 
 # external volume
 VOLUME /$SVC_NAME-override

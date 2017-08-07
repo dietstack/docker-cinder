@@ -1,0 +1,14 @@
+# Patch allows use of root path / (127.0.0.1:/) which is available in nfs4
+diff --git a/cinder/volume/drivers/remotefs.py b/cinder/volume/drivers/remotefs.py
+index 1961178..8198dbb 100644
+--- a/cinder/volume/drivers/remotefs.py
++++ b/cinder/volume/drivers/remotefs.py
+@@ -143,7 +143,7 @@ class RemoteFSDriver(driver.LocalVD, driver.TransferVD, driver.BaseVD):
+     driver_volume_type = None
+     driver_prefix = 'remotefs'
+     volume_backend_name = None
+-    SHARE_FORMAT_REGEX = r'.+:/.+'
++    SHARE_FORMAT_REGEX = r'.+:/.*'
+ 
+     def __init__(self, *args, **kwargs):
+         super(RemoteFSDriver, self).__init__(*args, **kwargs)

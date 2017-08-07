@@ -11,20 +11,32 @@ http_proxy_args="-e http_proxy=${http_proxy:-} -e https_proxy=${https_proxy:-} -
 
 cleanup() {
     echo "Clean up ..."
+    docker stop ${CONT_PREFIX}_nfs
     docker stop ${CONT_PREFIX}_mariadb
+    docker stop ${CONT_PREFIX}_rabbitmq
     docker stop ${CONT_PREFIX}_memcached
     docker stop ${CONT_PREFIX}_keystone
-    docker stop ${CONT_PREFIX}_glance
+    docker stop ${CONT_PREFIX}_cinder
 
+    docker rm -v ${CONT_PREFIX}_nfs
     docker rm -v ${CONT_PREFIX}_mariadb
+    docker rm -v ${CONT_PREFIX}_rabbitmq
     docker rm -v ${CONT_PREFIX}_memcached
     docker rm -v ${CONT_PREFIX}_keystone
-    docker rm -v ${CONT_PREFIX}_glance
+    docker rm -v ${CONT_PREFIX}_cinder
 }
 
 cleanup
 
 ##### Start Containers
+
+echo "Starting nfs container ..."
+docker run  --net=host -d --privileged --name ${CONT_PREFIX}_nfs \
+       -v /tmp:/cindervols -e SHARED_DIRECTORY=/cindervols \
+       itsthenetwork/nfs-server-alpine:latest
+
+echo "Wait till nfs server is running ."
+wait_for_port 2049 120
 
 echo "Starting mariadb container ..."
 docker run  --net=host -d -e MYSQL_ROOT_PASSWORD=veryS3cr3t --name ${CONT_PREFIX}_mariadb \
@@ -33,18 +45,28 @@ docker run  --net=host -d -e MYSQL_ROOT_PASSWORD=veryS3cr3t --name ${CONT_PREFIX
 echo "Wait till mariadb is running ."
 wait_for_port 3306 120
 
+echo "Starting RabbitMQ container ..."
+docker run -d --net=host -e DEBUG= --name ${CONT_PREFIX}_rabbitmq rabbitmq
+
+echo "Wait till Rabbitmq is running ."
+wait_for_port 5672 120
+
+# create openstack user in rabbitmq
+docker exec ${CONT_PREFIX}_rabbitmq rabbitmqctl add_user openstack veryS3cr3t
+docker exec ${CONT_PREFIX}_rabbitmq rabbitmqctl set_permissions openstack '.*' '.*' '.*'
+
 echo "Starting Memcached node (tokens caching) ..."
 docker run -d --net=host -e DEBUG= --name ${CONT_PREFIX}_memcached memcached
-
-# build glance container for current sources
-./build.sh
 
 echo "Wait till Memcached is running ."
 wait_for_port 11211 30
 
+# build cinder container from current sources
+./build.sh
+
 # create databases
 create_db_osadmin keystone keystone veryS3cr3t veryS3cr3t
-create_db_osadmin glance glance veryS3cr3t veryS3cr3t
+create_db_osadmin cinder cinder veryS3cr3t veryS3cr3t
 
 echo "Starting keystone container"
 docker run -d --net=host \
@@ -62,39 +84,12 @@ if [ $ret -ne 0 ]; then
     exit $ret
 fi
 
-wait_for_port 35357 120
-ret=$?
-if [ $ret -ne 0 ]; then
-    echo "Error: Port 35357 (Keystone Admin) not bounded!"
-    exit $ret
-fi
-
-echo "Starting glance container"
-GLANCE_TAG=$(docker images | grep -w glance | head -n 1 | awk '{print $2}')
-docker run -d --net=host \
+echo "Starting cinder container"
+docker run -d --net=host --privileged \
            -e DEBUG="true" \
            -e DB_SYNC="true" \
-           -e LOAD_META="true" \
            $http_proxy_args \
-           --name ${CONT_PREFIX}_glance ${DOCKER_PROJ_NAME}glance:$GLANCE_TAG
-
-##### TESTS #####
-
-wait_for_port 9191 120
-ret=$?
-if [ $ret -ne 0 ]; then
-    echo "Error: Port 9191 (Glance Registry) not bounded!"
-    docker logs ${CONT_PREFIX}_glance
-    exit $ret
-fi
-
-wait_for_port 9292 120
-ret=$?
-if [ $ret -ne 0 ]; then
-    echo "Error: Port 9292 (Glance API) not bounded!"
-    docker logs ${CONT_PREFIX}_glance
-    exit $ret
-fi
+           --name ${CONT_PREFIX}_cinder ${DOCKER_PROJ_NAME}cinder:latest
 
 echo "Return code $?"
 
@@ -108,10 +103,12 @@ if [ $ret -ne 0 ] && [ $ret -ne 128 ]; then
 fi
 set -e
 
-docker run --net=host --rm $http_proxy_args ${DOCKER_PROJ_NAME}osadmin /bin/bash -c ". /app/adminrc; openstack image create --container-format bare --disk-format qcow2 --file /app/cirros.img --public cirros"
+
+# Test whether we can create test volume
+docker run --net=host --rm $http_proxy_args ${DOCKER_PROJ_NAME}osadmin /bin/bash -c ". /app/adminrc; openstack volume create --size 1 testvol"
 ret=$?
 if [ $ret -ne 0 ]; then
-    echo "Error: Cirros image import error ${ret}!"
+    echo "Error: Volume test creation error ${ret}!"
     exit $ret
 fi
 
