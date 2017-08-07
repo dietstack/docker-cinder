@@ -4,7 +4,7 @@
 
 ```
 git clone https://gitlab.com/DietStack/docker-cinder.git
-cd docker-glance
+cd docker-cinder
 ./build.sh
 ```
 Result will be cinder image in a local image registry.
