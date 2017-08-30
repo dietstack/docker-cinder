@@ -32,9 +32,10 @@ cleanup
 
 ##### Start Containers
 
+mkdir -p /tmp/cindertest
 echo "Starting nfs container ..."
 docker run  --net=host -d --privileged --name ${CONT_PREFIX}_nfs \
-       -v /tmp:/cindervols -e SHARED_DIRECTORY=/cindervols \
+       -v /tmp/cindertest:/cindervols -e SHARED_DIRECTORY=/cindervols \
        itsthenetwork/nfs-server-alpine:latest
 
 echo "Wait till nfs server is running ."
