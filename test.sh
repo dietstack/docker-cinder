@@ -11,19 +11,21 @@ http_proxy_args="-e http_proxy=${http_proxy:-} -e https_proxy=${https_proxy:-} -
 
 cleanup() {
     echo "Clean up ..."
-    docker stop ${CONT_PREFIX}_nfs
     docker stop ${CONT_PREFIX}_mariadb
     docker stop ${CONT_PREFIX}_rabbitmq
     docker stop ${CONT_PREFIX}_memcached
     docker stop ${CONT_PREFIX}_keystone
     docker stop ${CONT_PREFIX}_cinder
+    docker stop ${CONT_PREFIX}_nfs
 
-    docker rm -v ${CONT_PREFIX}_nfs
     docker rm -v ${CONT_PREFIX}_mariadb
     docker rm -v ${CONT_PREFIX}_rabbitmq
     docker rm -v ${CONT_PREFIX}_memcached
     docker rm -v ${CONT_PREFIX}_keystone
     docker rm -v ${CONT_PREFIX}_cinder
+    docker rm -v ${CONT_PREFIX}_nfs
+
+    rm -rf /tmp/cindertest
 }
 
 cleanup
