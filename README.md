@@ -3,7 +3,7 @@
 ### Using
 
 ```
-git clone https://gitlab.com/DietStack/docker-cinder.git
+git clone https://github.com/dietstack/docker-cinder.git
 cd docker-cinder
 ./build.sh
 ```
