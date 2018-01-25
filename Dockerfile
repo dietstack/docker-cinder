@@ -19,7 +19,8 @@ RUN echo 'APT::Install-Recommends "false";' >> /etc/apt/apt.conf && \
 
 # Source codes to download
 ENV SVC_NAME=cinder
-ENV REPO="https://github.com/openstack/$SVC_NAME" BRANCH="stable/newton" COMMIT="1b3ab80f1c45"
+ENV REPO="https://github.com/openstack/$SVC_NAME" BRANCH="stable/pike"
+#COMMIT="1b3ab80f1c45"
 
 # Install glance with dependencies
 ENV BUILD_PACKAGES="git build-essential libssl-dev libffi-dev python-dev"
@@ -38,12 +39,13 @@ RUN apt update; apt install -y $BUILD_PACKAGES && \
         git clone $REPO --single-branch --depth=1 --branch $BRANCH; \
       fi; \
       cd /$SVC_NAME; pip install -r requirements.txt -c /app/upper-constraints.txt && /patches/patch.sh && python setup.py install && \
-      rm -rf /$SVC_NAME/.git; \
+      if false; then rm -rf /$SVC_NAME/.git; fi \
     fi; \
-    pip install supervisor PyMySQL python-memcached && \
-    apt remove -y --auto-remove $BUILD_PACKAGES &&  \
-    apt-get clean && apt autoremove && \
-    rm -rf /var/lib/apt/lists/* && rm -rf /root/.cache
+    pip install supervisor PyMySQL python-memcached
+#&& \
+#    apt remove -y --auto-remove $BUILD_PACKAGES &&  \
+#    apt-get clean && apt autoremove && \
+#    rm -rf /var/lib/apt/lists/* && rm -rf /root/.cache
 
 # prepare directories for storing image files and copy configs
 RUN mkdir -p /var/lib/$SVC_NAME/images /etc/SVC_NAME /etc/supervisord /var/log/supervisord; cp -a /$SVC_NAME/etc/* /etc/$SVC_NAME
