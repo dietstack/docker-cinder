@@ -98,7 +98,7 @@ echo "Return code $?"
 
 # bootstrap openstack settings and upload image to glance
 set +e
-docker run --net=host --rm $http_proxy_args ${DOCKER_PROJ_NAME}osadmin /bin/bash -c ". /app/tokenrc; bash /app/bootstrap.sh"
+docker run --net=host --rm $http_proxy_args ${DOCKER_PROJ_NAME}osadmin:latest /bin/bash -c ". /app/tokenrc; bash /app/bootstrap.sh"
 ret=$?
 if [ $ret -ne 0 ] && [ $ret -ne 128 ]; then
     echo "Error: Keystone bootstrap error ${ret}!"
@@ -108,7 +108,7 @@ set -e
 
 
 # Test whether we can create test volume
-docker run --net=host --rm $http_proxy_args ${DOCKER_PROJ_NAME}osadmin /bin/bash -c ". /app/adminrc; openstack volume create --size 1 testvol"
+docker run --net=host --rm $http_proxy_args ${DOCKER_PROJ_NAME}osadmin:latest /bin/bash -c ". /app/adminrc; openstack volume create --size 1 testvol"
 ret=$?
 if [ $ret -ne 0 ]; then
     echo "Error: Volume test creation error ${ret}!"

@@ -7,20 +7,21 @@ COPY patches/* /patches/
 
 RUN echo 'APT::Install-Recommends "false";' >> /etc/apt/apt.conf && \
     echo 'APT::Get::Install-Suggests "false";' >> /etc/apt/apt.conf && \
-    apt update; apt install -y ca-certificates wget python libpython2.7 nfs-common qemu-utils; \
+    apt update; apt install -y ca-certificates wget python libpython2.7 nfs-common qemu-utils \
+                               netbase; \
     update-ca-certificates; \
     wget --no-check-certificate https://bootstrap.pypa.io/get-pip.py; \
     python get-pip.py; \
     rm get-pip.py; \
-    wget https://raw.githubusercontent.com/openstack/requirements/stable/newton/upper-constraints.txt -P /app && \
+    wget https://raw.githubusercontent.com/openstack/requirements/stable/pike/upper-constraints.txt -P /app && \
     /patches/stretch-crypto.sh && \
     apt-get clean && apt autoremove && \
     rm -rf /var/lib/apt/lists/*; rm -rf /root/.cache
 
 # Source codes to download
+# commit Feb 2, 2018
 ENV SVC_NAME=cinder
-ENV REPO="https://github.com/openstack/$SVC_NAME" BRANCH="stable/pike"
-#COMMIT="1b3ab80f1c45"
+ENV REPO="https://github.com/openstack/$SVC_NAME" BRANCH="stable/pike" COMMIT="dee860c8cf4b"
 
 # Install glance with dependencies
 ENV BUILD_PACKAGES="git build-essential libssl-dev libffi-dev python-dev"
@@ -39,22 +40,21 @@ RUN apt update; apt install -y $BUILD_PACKAGES && \
         git clone $REPO --single-branch --depth=1 --branch $BRANCH; \
       fi; \
       cd /$SVC_NAME; pip install -r requirements.txt -c /app/upper-constraints.txt && /patches/patch.sh && python setup.py install && \
-      if false; then rm -rf /$SVC_NAME/.git; fi \
+      rm -rf /$SVC_NAME/.git; \
     fi; \
-    pip install supervisor PyMySQL python-memcached
-#&& \
-#    apt remove -y --auto-remove $BUILD_PACKAGES &&  \
-#    apt-get clean && apt autoremove && \
-#    rm -rf /var/lib/apt/lists/* && rm -rf /root/.cache
+    pip install supervisor PyMySQL python-memcached && \
+    apt remove -y --auto-remove $BUILD_PACKAGES &&  \
+    apt-get clean && apt autoremove && \
+    rm -rf /var/lib/apt/lists/* && rm -rf /root/.cache
 
 # prepare directories for storing image files and copy configs
-RUN mkdir -p /var/lib/$SVC_NAME/images /etc/SVC_NAME /etc/supervisord /var/log/supervisord; cp -a /$SVC_NAME/etc/* /etc/$SVC_NAME
+RUN mkdir -p /var/lib/$SVC_NAME/images /etc/SVC_NAME /etc/supervisord /var/log/supervisord
 
 # copy supervisor config
 COPY configs/supervisord/supervisord.conf /etc
 
 # copy configs
-COPY configs/$SVC_NAME/* /etc/$SVC_NAME/
+COPY configs/$SVC_NAME/ /etc/$SVC_NAME/
 
 # external volume
 VOLUME /$SVC_NAME-override
